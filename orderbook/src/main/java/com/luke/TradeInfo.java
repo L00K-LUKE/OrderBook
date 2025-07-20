@@ -10,5 +10,18 @@ public class TradeInfo {
         this.price = price;
         this.quantity = quantity;
     }
-        
+
+    public int getOrderId() {
+        return orderId;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+    
+    
 }
