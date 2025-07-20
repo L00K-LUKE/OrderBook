@@ -7,6 +7,13 @@ public class OrderModify {
     private Side side;
     private int quantity;
 
+    public OrderModify(int orderId, double price, Side side, int quantity) {
+        this.orderId = orderId;
+        this.price = price;
+        this.side = side;
+        this.quantity = quantity;
+    }
+
     public int getOrderId() {
         return orderId;
     }
@@ -23,5 +30,4 @@ public class OrderModify {
     public Order toOrder(OrderType orderType) {
         return new Order(this.orderId, orderType, this.side, this.price, this.quantity);
     }
-    
 }
