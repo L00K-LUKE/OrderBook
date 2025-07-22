@@ -2,6 +2,8 @@ package com.luke;
 
 public class Order {
     
+    private static int OrderIdIncrementor = 0;
+
     private int OrderId;
     private OrderType orderType;
     private Side side;
@@ -9,8 +11,8 @@ public class Order {
     private int initialQuantity;
     private int remainingQuantity;
 
-    public Order(int orderId, OrderType orderType, Side side, double price, int quantity) {
-        OrderId = orderId;
+    public Order(OrderType orderType, Side side, double price, int quantity) {
+        this.OrderId = Order.OrderIdIncrementor++;
         this.orderType = orderType;
         this.side = side;
         this.price = price;
