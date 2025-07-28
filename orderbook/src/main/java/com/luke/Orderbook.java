@@ -4,8 +4,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Queue;
 import java.util.TreeMap;
+import java.util.logging.Level;
 
 public class Orderbook {
     private TreeMap<Double, Queue<Order>> bids = new TreeMap<>(Collections.reverseOrder());
@@ -14,7 +16,7 @@ public class Orderbook {
 
     public boolean canMatch(Side side, double price) {
         if (side.equals(Side.BUY)) {
-            if (this.bids.isEmpty()) {
+            if (this.asks.isEmpty()) {
                 return false;
             }
             double lowestAsk = this.asks.firstKey();
@@ -22,18 +24,13 @@ public class Orderbook {
             return lowestAsk <= price;
         }
 
-        else if (side.equals(Side.SELL)) {
+        else {
             if (this.bids.isEmpty()) {
                 return false;
             }
             double highestBid = this.bids.firstKey();
             return highestBid >= price;
         }
-
-        else {
-            throw new IllegalArgumentException("Side must be of either buy or sell enum type");
-        }
-
     }
 
     public ArrayList<Trade> matchOrders() {
@@ -62,7 +59,7 @@ public class Orderbook {
 
             if (bid.isFilled()) {
                 bidQueue.poll();
-                orders.remove(ask.getOrderId());
+                orders.remove(bid.getOrderId());
             }
 
             if (ask.isFilled()) {
@@ -97,18 +94,18 @@ public class Orderbook {
             }
     }
 
-    public boolean addTrade(Order order) {
+    public void addOrder(Order order) {
         if (this.orders.containsKey(order.getOrderId())) {
             System.err.println("Order with this id already exists.");
-            return false; 
+            return; 
         }
 
-        if (!canMatch(order.getSide(), order.getPrice())) {
-            return false;
+        if (!canMatch(order.getSide(), order.getPrice()) && order.getOrderType() == OrderType.FillAndKill) {
+            return;
         }
 
         if (order.getSide() == Side.BUY) {
-            Queue<Order> bidsAtPrice = this.bids.computeIfAbsent(order.getPrice(), k -> new LinkedList<>());
+            Queue<Order> bidsAtPrice = this.bids.computeIfAbsent(order.getPrice(), k -> new LinkedList<>()); // Or putIfAbsent?
             bidsAtPrice.add(order);
         }
         else {
@@ -117,7 +114,7 @@ public class Orderbook {
         }
 
         this.orders.put(order.getOrderId(), order);
-        return true;
+        return;
     }
 
     public void cancelOrder(int orderId) {
@@ -152,7 +149,47 @@ public class Orderbook {
                 this.asks.remove(price);
             }
         }
-         
     }
 
+    public void modifyOrder(OrderModify replacement) {
+        if (!this.orders.containsKey(replacement.getOrderId())) {
+            System.err.println("No order exists with that OrderID");
+            return;
+        }
+
+        this.cancelOrder(replacement.getOrderId());
+        this.addOrder(replacement.createOrder());
+    }
+
+    public OrderBookLevelInfos getOrderBookLevelInfos() {
+        ArrayList<LevelInfo> bidInfos = new ArrayList<>();
+        ArrayList<LevelInfo> askInfos = new ArrayList<>();
+
+        bidInfos.ensureCapacity(this.bids.size());
+        askInfos.ensureCapacity(this.asks.size());
+
+        for (Map.Entry<Double, Queue<Order>> entry : this.bids.entrySet()) {
+            Double price = entry.getKey();
+            Queue<Order> ordersAtLevel = entry.getValue();
+            bidInfos.add(creatLevelInfo(price, ordersAtLevel));
+        }
+
+       for (Map.Entry<Double, Queue<Order>> entry : this.asks.entrySet()) {
+            Double price = entry.getKey();
+            Queue<Order> ordersAtLevel = entry.getValue();
+            askInfos.add(creatLevelInfo(price, ordersAtLevel));
+        } 
+
+        return new OrderBookLevelInfos(bidInfos, askInfos);
+
+    }
+
+    private LevelInfo creatLevelInfo(double price, Queue<Order> ordersAtLevel) {
+        int currentSum = 0;
+        for (Order order : ordersAtLevel) {
+            currentSum += order.getRemainingQuantity();
+        }
+
+        return new LevelInfo(price, currentSum);
+    }
 }
