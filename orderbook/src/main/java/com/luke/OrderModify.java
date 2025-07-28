@@ -3,12 +3,14 @@ package com.luke;
 public class OrderModify {
 
     private int orderId;
+    private OrderType orderType;
     private double price;
     private Side side;
     private int quantity;
 
-    public OrderModify(int orderId, double price, Side side, int quantity) {
+    public OrderModify(int orderId, OrderType orderType, double price, Side side, int quantity) {
         this.orderId = orderId;
+        this.orderType = orderType;
         this.price = price;
         this.side = side;
         this.quantity = quantity;
@@ -16,6 +18,10 @@ public class OrderModify {
 
     public int getOrderId() {
         return orderId;
+    }
+
+    public OrderType getOrderType() {
+        return orderType;
     }
     public double getPrice() {
         return price;
@@ -27,7 +33,7 @@ public class OrderModify {
         return quantity;
     }
 
-    public Order toOrder(OrderType orderType) {
-        return new Order(this.orderId, orderType, this.side, this.price, this.quantity);
+    public Order createOrder() {
+        return new Order(orderType, side, price, quantity);
     }
 }
