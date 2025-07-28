@@ -3,6 +3,7 @@ package com.luke;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Queue;
 import java.util.TreeMap;
 
@@ -96,15 +97,62 @@ public class Orderbook {
             }
     }
 
-    public void addTrade(Order order) {
+    public boolean addTrade(Order order) {
         if (this.orders.containsKey(order.getOrderId())) {
-            throw new IllegalArgumentException("Duplicate orderID"); 
+            System.err.println("Order with this id already exists.");
+            return false; 
         }
 
-        if (canMatch(order.getSide(), order.getPrice()) {
-            
-            
+        if (!canMatch(order.getSide(), order.getPrice())) {
+            return false;
         }
+
+        if (order.getSide() == Side.BUY) {
+            Queue<Order> bidsAtPrice = this.bids.computeIfAbsent(order.getPrice(), k -> new LinkedList<>());
+            bidsAtPrice.add(order);
+        }
+        else {
+            Queue<Order> asksAtPrice = this.asks.computeIfAbsent(order.getPrice(), k -> new LinkedList<>());
+            asksAtPrice.add(order);
+        }
+
+        this.orders.put(order.getOrderId(), order);
+        return true;
+    }
+
+    public void cancelOrder(int orderId) {
+        Order orderToDelete = this.orders.remove(orderId);
+
+        if (orderToDelete == null) {
+            return;
+        }
+
+        double price = orderToDelete.getPrice();
+        Queue<Order> queue;
+
+        if (orderToDelete.getSide() == Side.BUY) {
+            queue = this.bids.get(price);
+            if (queue == null) {
+                return;
+            }
+
+            queue.remove(orderToDelete);
+            if (queue.isEmpty()) {
+                this.bids.remove(price);
+            }
+            
+        } else {
+            queue = this.asks.get(price);
+            if (queue == null) {
+                return;
+            }
+
+            queue.remove(orderToDelete);
+            if (queue.isEmpty()) {
+                this.asks.remove(price);
+            }
+        }
+         
     }
 
 }
