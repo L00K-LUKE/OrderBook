@@ -16,15 +16,16 @@ public class Orderbook {
     public boolean canFullyMatch(Order order) {
         TreeMap<Double, Queue<Order>> book = (order.getSide() == Side.BUY) ? this.asks : this.bids;
         int remainingQuantity = order.getRemainingQuantity();
-        double targetPrice = order.getPrice();
         int totalAvailable = 0;
 
         for (Map.Entry<Double, Queue<Order>> entry : book.entrySet()) {
-            double existingPrice = entry.getKey();
-            boolean priceCompatible = (order.getSide() == Side.BUY) ? (targetPrice >= existingPrice) : (targetPrice <= existingPrice);
-            if (!priceCompatible) break; 
+            if (order.getOrderType() != OrderType.Market) {
+                double existingPrice = entry.getKey();
+                boolean priceCompatible = checkPriceCompatible(order, existingPrice);
+                if (!priceCompatible) break; 
+            }
 
-            for (Order existingOrder : entry.getValue()) {
+            for (Order existingOrder : entry.getValue()) { // checks quantity available
                 totalAvailable += existingOrder.getRemainingQuantity();
                 if (totalAvailable >= remainingQuantity) return true;
             }
@@ -73,11 +74,11 @@ public class Orderbook {
     }
 
     private void cleanUpEmptyLevels(Queue<Order> bidQueue, double bidPrice, Queue<Order> askQueue, double askPrice) {
-        if (bidQueue.isEmpty()) {
+        if (bidQueue != null && bidQueue.isEmpty()) {
                 this.bids.remove(bidPrice);
             }
 
-        if (askQueue.isEmpty()) {
+        if (askQueue != null && askQueue.isEmpty()) {
             this.asks.remove(askPrice);
         }
     }
@@ -99,11 +100,7 @@ public class Orderbook {
 
         switch (order.getOrderType()) {
             case FillOrKill:
-                if (!canFullyMatch(order)) {
-                    return trades;
-                }
-                addOrderHelper(order);
-                trades.addAll(matchOrders());
+                trades.addAll(executeFillOrKill(order));
                 break;
 
             case GoodTillCancelled:
@@ -113,30 +110,42 @@ public class Orderbook {
             
             case ImmediateOrCancel:
                 addOrderHelper(order);
-                trades.addAll(matchOrders());
-                if (!order.isFilled()) {
-                    cancelOrder(order.getOrderId());
-                }
+                trades.addAll(executeImmediateOrCancel(order));
                 break;
 
             case Market:
                 trades.addAll(executeMarketOrder(order)); 
                 break;
+
             default:
                 break;
         }
         return trades;
     }
 
-    private ArrayList<Trade> executeMarketOrder(Order order) {
-        ArrayList<Trade> trades = new ArrayList<>();
+    private boolean checkPriceCompatible(Order order1, Order order2) {
+        return (order1.getSide() == Side.BUY) ? (order1.getPrice() >= order2.getPrice()) : (order1.getPrice() <= order2.getPrice());
+    }
 
+    private boolean checkPriceCompatible(Order order, double price) {
+        return (order.getSide() == Side.BUY) ? (order.getPrice() >= price) : (order.getPrice() <= price);
+    }
+
+    private ArrayList<Trade> executeMatchingOrder(Order order, boolean enforcePriceCheck) {
+        ArrayList<Trade> trades = new ArrayList<>();
         TreeMap<Double, Queue<Order>> book = (order.getSide() == Side.BUY) ? this.asks : this.bids;
         int remainingQuantity = order.getRemainingQuantity();
 
         while (remainingQuantity > 0 && !book.isEmpty()) {
-            Map.Entry<Double, Queue<Order>> bestLevel = book.firstEntry();
-            Queue<Order> queue = bestLevel.getValue();
+            Map.Entry<Double, Queue<Order>> priceLevel = book.firstEntry();
+            double bestPrice = priceLevel.getKey();
+
+            // Only checks price for ImmediateOrCancell
+            if (enforcePriceCheck && !checkPriceCompatible(order, bestPrice)) {
+                break;
+            }
+
+            Queue<Order> queue = priceLevel.getValue();
             Order matchedWithOrder = queue.peek();
 
             int quantity = Math.min(remainingQuantity, matchedWithOrder.getRemainingQuantity());
@@ -155,10 +164,26 @@ public class Orderbook {
             }
 
             if (queue.isEmpty()) {
-                book.remove(bestLevel.getKey());
+                book.remove(priceLevel.getKey());
             }
         }
         return trades;
+    }
+
+    private ArrayList<Trade> executeImmediateOrCancel(Order order) {
+        return executeMatchingOrder(order, true);
+    }
+
+    private ArrayList<Trade> executeMarketOrder(Order order) {
+        return executeMatchingOrder(order, false);
+    }
+
+    private ArrayList<Trade> executeFillOrKill(Order order) {
+       if (!canFullyMatch(order)) {
+            return new ArrayList<>();
+        }
+
+        return executeMatchingOrder(order, true);
     }
 
     public void cancelOrder(int orderId) {
