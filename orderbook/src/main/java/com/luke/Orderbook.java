@@ -101,7 +101,7 @@ public class Orderbook {
             return; 
         }
 
-        if (order.getOrderType() == OrderType.FillAndKill) {
+        if (order.getOrderType() == OrderType.FillOrKill) {
             if (!canFullyMatch(order)) {
                 return;
             }
