@@ -110,36 +110,16 @@ public class Orderbook {
 
     public void cancelOrder(int orderId) {
         Order orderToDelete = this.orders.remove(orderId);
+        if (orderToDelete == null) return;
 
-        if (orderToDelete == null) {
-            return;
-        }
-
+        TreeMap<Double, Queue<Order>> bookSide = (orderToDelete.getSide() == Side.BUY) ? this.bids : this.asks;
         double price = orderToDelete.getPrice();
-        Queue<Order> queue;
+        Queue<Order> queue = bookSide.get(price);
 
-        if (orderToDelete.getSide() == Side.BUY) {
-            queue = this.bids.get(price);
-            if (queue == null) {
-                return;
-            }
+        if (queue == null) return;
 
-            queue.remove(orderToDelete);
-            if (queue.isEmpty()) {
-                this.bids.remove(price);
-            }
-            
-        } else {
-            queue = this.asks.get(price);
-            if (queue == null) {
-                return;
-            }
-
-            queue.remove(orderToDelete);
-            if (queue.isEmpty()) {
-                this.asks.remove(price);
-            }
-        }
+        queue.remove(orderToDelete);
+        if (queue.isEmpty()) bookSide.remove(price);
     }
 
     public void modifyOrder(OrderModify replacement) {
