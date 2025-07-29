@@ -77,9 +77,9 @@ public class Orderbook {
                 this.bids.remove(bidPrice);
             }
 
-            if (askQueue.isEmpty()) {
-                this.asks.remove(askPrice);
-            }
+        if (askQueue.isEmpty()) {
+            this.asks.remove(askPrice);
+        }
     }
 
     private void addOrderHelper(Order order) {
@@ -89,23 +89,76 @@ public class Orderbook {
         this.orders.put(order.getOrderId(), order);
     }
 
-    public void addOrder(Order order) {
+    public ArrayList<Trade> addOrder(Order order) {
+        ArrayList<Trade> trades = new ArrayList<>();
+
         if (this.orders.containsKey(order.getOrderId())) {
             System.err.println("Order with this id already exists.");
-            return; 
+            return trades; 
         }
 
-        if (order.getOrderType() == OrderType.FillOrKill) {
-            if (!canFullyMatch(order)) {
-                return;
+        switch (order.getOrderType()) {
+            case FillOrKill:
+                if (!canFullyMatch(order)) {
+                    return trades;
+                }
+                addOrderHelper(order);
+                trades.addAll(matchOrders());
+                break;
+
+            case GoodTillCancelled:
+                addOrderHelper(order);
+                trades.addAll(matchOrders());
+                break;
+            
+            case ImmediateOrCancel:
+                addOrderHelper(order);
+                trades.addAll(matchOrders());
+                if (!order.isFilled()) {
+                    cancelOrder(order.getOrderId());
+                }
+                break;
+
+            case Market:
+                trades.addAll(executeMarketOrder(order)); 
+                break;
+            default:
+                break;
+        }
+        return trades;
+    }
+
+    private ArrayList<Trade> executeMarketOrder(Order order) {
+        ArrayList<Trade> trades = new ArrayList<>();
+
+        TreeMap<Double, Queue<Order>> book = (order.getSide() == Side.BUY) ? this.asks : this.bids;
+        int remainingQuantity = order.getRemainingQuantity();
+
+        while (remainingQuantity > 0 && !book.isEmpty()) {
+            Map.Entry<Double, Queue<Order>> bestLevel = book.firstEntry();
+            Queue<Order> queue = bestLevel.getValue();
+            Order matchedWithOrder = queue.peek();
+
+            int quantity = Math.min(remainingQuantity, matchedWithOrder.getRemainingQuantity());
+            matchedWithOrder.fill(quantity);
+            order.fill(quantity);
+
+            Order bidOrder = (order.getSide() == Side.BUY) ? order : matchedWithOrder;
+            Order askOrder = (order.getSide() == Side.SELL) ? order : matchedWithOrder;
+            trades.add(Trade.createTradeFromOrders(bidOrder, askOrder, quantity));
+
+            remainingQuantity -= quantity;
+
+            if (matchedWithOrder.isFilled()) {
+                queue.poll();
+                orders.remove(matchedWithOrder.getOrderId());
             }
-            addOrderHelper(order);
-            matchOrders();
-            return;
-        }
 
-        addOrderHelper(order);
-        return;
+            if (queue.isEmpty()) {
+                book.remove(bestLevel.getKey());
+            }
+        }
+        return trades;
     }
 
     public void cancelOrder(int orderId) {
