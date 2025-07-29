@@ -83,15 +83,9 @@ public class Orderbook {
     }
 
     private void addOrderHelper(Order order) {
-        if (order.getSide() == Side.BUY) {
-            Queue<Order> bidsAtPrice = this.bids.computeIfAbsent(order.getPrice(), k -> new LinkedList<>()); // Or putIfAbsent?
-            bidsAtPrice.add(order);
-        }
-        else {
-            Queue<Order> asksAtPrice = this.asks.computeIfAbsent(order.getPrice(), k -> new LinkedList<>());
-            asksAtPrice.add(order);
-        }
-
+        TreeMap<Double, Queue<Order>> existingOrders = (order.getSide() == Side.BUY) ? this.bids : this.asks;
+        Queue<Order> queue = existingOrders.computeIfAbsent(order.getPrice(), k -> new LinkedList<>());
+        queue.add(order);
         this.orders.put(order.getOrderId(), order);
     }
 
