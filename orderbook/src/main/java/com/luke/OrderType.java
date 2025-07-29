@@ -4,6 +4,6 @@ public enum OrderType {
     GoodTillCancelled,
     FillOrKill,
     ImmediateOrCancel,
-    MarketOrder,
+    Market,
 }
 
