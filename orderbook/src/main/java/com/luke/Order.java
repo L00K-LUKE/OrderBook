@@ -12,6 +12,13 @@ public class Order {
     private int remainingQuantity;
 
     public Order(OrderType orderType, Side side, double price, int quantity) {
+        if (price < 0) {
+            throw new IllegalArgumentException("Price cannot be negative");
+        }
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than zero");
+        }
+
         this.OrderId = Order.OrderIdIncrementor++;
         this.orderType = orderType;
         this.side = side;
