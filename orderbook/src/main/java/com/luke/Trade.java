@@ -17,7 +17,7 @@ public class Trade {
         this.askTrade = askTrade;
     }
 
-    public static Trade create_trade_from_orders(Order bid, Order ask, int quantity) {
+    public static Trade createTradeFromOrders(Order bid, Order ask, int quantity) {
         return new Trade(new TradeInfo(bid.getOrderId(), bid.getPrice(), quantity),
         new TradeInfo(ask.getOrderId(), ask.getPrice(), quantity));
     }
