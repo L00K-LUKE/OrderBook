@@ -19,7 +19,7 @@ public class Orderbook {
         int totalAvailable = 0;
 
         for (Map.Entry<Double, Queue<Order>> entry : book.entrySet()) {
-            if (order.getOrderType() != OrderType.Market) {
+            if (order.getOrderType() != OrderType.MARKET) {
                 double existingPrice = entry.getKey();
                 boolean priceCompatible = checkPriceCompatible(order, existingPrice);
                 if (!priceCompatible) break; 
@@ -99,21 +99,21 @@ public class Orderbook {
         }
 
         switch (order.getOrderType()) {
-            case FillOrKill:
+            case FILL_OR_KILL:
                 trades.addAll(executeFillOrKill(order));
                 break;
 
-            case GoodTillCancelled:
+            case GOOD_TILL_CANCELLED:
                 addOrderHelper(order);
                 trades.addAll(matchOrders());
                 break;
             
-            case ImmediateOrCancel:
+            case IMMEDIATE_OR_CANCEL:
                 addOrderHelper(order);
                 trades.addAll(executeImmediateOrCancel(order));
                 break;
 
-            case Market:
+            case MARKET:
                 trades.addAll(executeMarketOrder(order)); 
                 break;
 
