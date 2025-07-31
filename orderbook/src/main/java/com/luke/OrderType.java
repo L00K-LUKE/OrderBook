@@ -1,9 +1,9 @@
 package com.luke;
 
 public enum OrderType {
-    GoodTillCancelled,
-    FillOrKill,
-    ImmediateOrCancel,
-    Market,
+    GOOD_TILL_CANCELLED,
+    FILL_OR_KILL,
+    IMMEDIATE_OR_CANCEL,
+    MARKET,
 }
 
