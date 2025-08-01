@@ -109,7 +109,6 @@ public class Orderbook {
                 break;
             
             case IMMEDIATE_OR_CANCEL:
-                addOrderHelper(order);
                 trades.addAll(executeImmediateOrCancel(order));
                 break;
 
