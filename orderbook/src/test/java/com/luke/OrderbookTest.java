@@ -62,8 +62,6 @@ public class OrderbookTest {
     @Test
     void testMatchOrdersExecutesTrade() {
         addBid(100.0, 10);
-        
-
         ArrayList<Trade> trades = addAsk(100.0, 5);
         assertEquals(1, trades.size());
         assertEquals(5, trades.get(0).getQuantity());
@@ -133,7 +131,7 @@ public class OrderbookTest {
     @Test
     void testCancelOrderRemovesIt() {
         addBid(100.0, 10);
-        orderbook.cancelOrder(1);
+        orderbook.cancelOrder(0);
         assertEquals(0, orderbook.calculateOrderBookLevelInfos().getBids().size());
     }
 
