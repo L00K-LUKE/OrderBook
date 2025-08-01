@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class OrderbookTest {
-
     private Orderbook orderbook;
 
     @BeforeEach
@@ -16,7 +15,6 @@ public class OrderbookTest {
         orderbook = new Orderbook();
     }
 
-    
     // Helpers
 
     ArrayList<Trade> addBid(double price, int quantity) {
@@ -103,6 +101,22 @@ public class OrderbookTest {
     void testImmediateOrCancelDoesNotRestInBook() {
         addAsk(100.0, 5);
         Order ioc = new Order(OrderType.IMMEDIATE_OR_CANCEL, Side.BUY, 100.0, 10);
+        orderbook.addOrder(ioc);
+        assertEquals(0, orderbook.calculateOrderBookLevelInfos().getBids().size());
+    }
+
+    @Test
+    void testMarketOrderDoesNotRestInBook() {
+        addAsk(100.0, 5);
+        Order ioc = new Order(OrderType.MARKET, Side.BUY, 0, 10);
+        orderbook.addOrder(ioc);
+        assertEquals(0, orderbook.calculateOrderBookLevelInfos().getBids().size());
+    }
+
+    @Test
+    void testFillOrKillDoesNotRestInBook() {
+        addAsk(100.0, 5);
+        Order ioc = new Order(OrderType.FILL_OR_KILL, Side.BUY, 100.0, 10);
         orderbook.addOrder(ioc);
         assertEquals(0, orderbook.calculateOrderBookLevelInfos().getBids().size());
     }
