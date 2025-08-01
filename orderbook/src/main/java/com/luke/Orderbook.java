@@ -204,7 +204,6 @@ public class Orderbook {
             System.err.println("No order exists with that OrderID");
             return;
         }
-
         this.cancelOrder(replacement.getOrderId());
         this.addOrder(replacement.createOrder());
     }
@@ -229,7 +228,6 @@ public class Orderbook {
         } 
 
         return new OrderBookLevelInfos(bidInfos, askInfos);
-
     }
 
     private LevelInfo createLevelInfo(double price, Queue<Order> ordersAtLevel) {
