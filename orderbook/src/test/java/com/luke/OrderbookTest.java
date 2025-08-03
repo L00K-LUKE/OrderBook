@@ -60,6 +60,30 @@ public class OrderbookTest {
         assertEquals(1, orderbook.calculateOrderBookLevelInfos().getBids().size()); 
     }
 
+    @Test
+    public void testPriceTimePriorityExecution() {
+        // Add two sell orders at the same price, different timestamps (earlier one first)
+
+        addAsk(100, 10); // order 1
+        addAsk(100, 10); // order 2
+
+
+        // Add a sell order with a better price (should match first despite being newer)
+        addAsk(90, 10);
+
+        // Add a buy order that can match with all three
+
+        ArrayList<Trade> trades = addBid(101, 30);
+
+        // Verify number of trades
+        assertEquals(3, trades.size(), "Should have executed 3 trades total.");
+
+        // Verify execution order follows price-time priority
+        assertEquals(2, trades.get(0).getAskTrade().getOrderId(), "Best price (order 3) should execute first.");
+        assertEquals(0, trades.get(1).getAskTrade().getOrderId(), "Older order at 100.0 should execute before newer one.");
+        assertEquals(1, trades.get(2).getAskTrade().getOrderId(), "Newer order at 100.0 should execute last.");
+    }
+
     // Matching Orders
 
     @Test
