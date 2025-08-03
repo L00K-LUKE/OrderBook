@@ -4,6 +4,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -176,4 +181,117 @@ public class OrderbookTest {
         assertEquals(15, infos.getBids().get(0).getQuantity());
         assertEquals(7, infos.getAsks().get(0).getQuantity());
     }
+
+    // Concurrency 
+
+    @Test
+    void testConcurrentOrderAdds() throws InterruptedException {
+        int threadCount = 10;
+        int ordersPerThread = 100;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch latch = new CountDownLatch(threadCount);
+
+        for (int i = 0; i < threadCount; i++) {
+            executor.submit(() -> {
+                for (int j = 0; j < ordersPerThread; j++) {
+                    addBid(100.0, 1);
+                }
+                latch.countDown();
+            });
+        }
+
+        latch.await();
+        executor.shutdown();
+
+        OrderBookLevelInfos infos = orderbook.calculateOrderBookLevelInfos();
+        assertEquals(threadCount * ordersPerThread, infos.getBids().get(0).getQuantity());
+    }
+
+    @Test
+    void testConcurrentMatchingOrders() throws InterruptedException {
+        int threadCount = 5;
+        int ordersPerThread = 50;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount * 2);
+        CountDownLatch latch = new CountDownLatch(threadCount * 2);
+    
+        // Buyers
+        for (int i = 0; i < threadCount; i++) {
+            executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    for (int j = 0; j < ordersPerThread; j++) {
+                        addBid(100.0, 1);
+                    }
+                    latch.countDown();
+                }
+            });
+        }
+    
+        // Sellers
+        for (int i = 0; i < threadCount; i++) {
+            executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    for (int j = 0; j < ordersPerThread; j++) {
+                        addAsk(100.0, 1);
+                    }
+                    latch.countDown();
+                }
+            });
+        }
+    
+        latch.await();
+        executor.shutdown();
+    
+        OrderBookLevelInfos infos = orderbook.calculateOrderBookLevelInfos();
+        int remainingOrders = 0;
+        for (int i = 0; i < infos.getBids().size(); i++) {
+            remainingOrders += infos.getBids().get(i).getQuantity();
+        }
+        for (int i = 0; i < infos.getAsks().size(); i++) {
+            remainingOrders += infos.getAsks().get(i).getQuantity();
+        }
+    
+        assertTrue(remainingOrders <= 5, "Expected most orders to be matched");
+    }
+
+    @Test
+    void testConcurrentCancellationsAndModifications() throws InterruptedException {
+        // Add initial orders
+        for (int i = 0; i < 50; i++) {
+            addBid(100.0, 10);
+        }
+
+        int threads = 50;
+        ExecutorService executor = Executors.newFixedThreadPool(threads);
+        CountDownLatch latch = new CountDownLatch(threads);
+
+        for (int i = 0; i < threads; i++) {
+            final int orderId = i;
+            executor.submit(() -> {
+                try {
+                    if (orderId % 2 == 0) {
+                        orderbook.cancelOrder(orderId);
+                    } else {
+                        orderbook.modifyOrder(new OrderModify(orderId, OrderType.GOOD_TILL_CANCELLED, 100.0, Side.BUY, 20));
+                    }
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await();
+        executor.shutdown();
+
+        // Validate that no negative quantities exist and the order book is in a consistent state
+        int totalBidQty = orderbook.calculateOrderBookLevelInfos()
+        .getBids()
+        .stream()
+        .mapToInt(info -> info.getQuantity())
+        .sum();
+
+        assertTrue(totalBidQty >= 0);
+    }
+
 }

@@ -7,11 +7,13 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 import java.util.TreeMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class Orderbook {
     private TreeMap<Double, Queue<Order>> bids = new TreeMap<>(Collections.reverseOrder());
     private TreeMap<Double, Queue<Order>> asks = new TreeMap<>();
     private HashMap<Integer, Order> orders = new HashMap<>();
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     public boolean canFullyMatch(Order order) {
         TreeMap<Double, Queue<Order>> book = (order.getSide() == Side.BUY) ? this.asks : this.bids;
@@ -91,6 +93,7 @@ public class Orderbook {
     }
 
     public ArrayList<Trade> addOrder(Order order) {
+        lock.writeLock().lock();
         ArrayList<Trade> trades = new ArrayList<>();
 
         if (this.orders.containsKey(order.getOrderId())) {
@@ -119,6 +122,7 @@ public class Orderbook {
             default:
                 break;
         }
+        lock.writeLock().unlock();
         return trades;
     }
 
@@ -209,6 +213,7 @@ public class Orderbook {
     }
 
     public OrderBookLevelInfos calculateOrderBookLevelInfos() {
+        lock.readLock().lock();
         ArrayList<LevelInfo> bidInfos = new ArrayList<>();
         ArrayList<LevelInfo> askInfos = new ArrayList<>();
 
@@ -226,7 +231,7 @@ public class Orderbook {
             Queue<Order> ordersAtLevel = entry.getValue();
             askInfos.add(createLevelInfo(price, ordersAtLevel));
         } 
-
+        lock.readLock().unlock();
         return new OrderBookLevelInfos(bidInfos, askInfos);
     }
 
