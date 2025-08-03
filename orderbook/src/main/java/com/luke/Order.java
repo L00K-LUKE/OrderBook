@@ -1,8 +1,9 @@
 package com.luke;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Order {
     
-    private static int OrderIdIncrementor = 0;
+    private static final AtomicInteger orderIdIncrementor = new AtomicInteger();
 
     private int OrderId;
     private OrderType orderType;
@@ -19,7 +20,7 @@ public class Order {
             throw new IllegalArgumentException("Quantity must be greater than zero");
         }
 
-        this.OrderId = Order.OrderIdIncrementor++;
+        this.OrderId = Order.orderIdIncrementor.getAndIncrement();
         this.orderType = orderType;
         this.side = side;
         this.price = price;

@@ -5,14 +5,22 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class OrderTest {
 
-     @BeforeEach
-    void resetOrderIdIncrementor() throws Exception {
-        // Use reflection to reset the static counter for predictable tests
-        var field = Order.class.getDeclaredField("OrderIdIncrementor");
+
+    @BeforeEach
+    void resetOrderIdIncrementor() throws Exception { // resets the static orderId incrementer before each test 
+        var field = Order.class.getDeclaredField("orderIdIncrementor");
         field.setAccessible(true);
-        field.set(null, 0);
+        AtomicInteger counter = (AtomicInteger) field.get(null);
+        counter.set(0);
     }
 
     @Test
@@ -71,5 +79,24 @@ public class OrderTest {
         Order order = new Order(OrderType.MARKET, Side.BUY, 100, 10);
 
         assertThrows(IllegalArgumentException.class, () -> order.fill(11));
+    }
+
+    @Test
+    void testOrderIdsUniqueUnderConcurrency() throws InterruptedException {
+        int numThreads = 50;
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        Set<Integer> ids = ConcurrentHashMap.newKeySet();
+
+        for (int i = 0; i < numThreads; i++) {
+            executor.submit(() -> {
+                Order order = new Order(OrderType.GOOD_TILL_CANCELLED, Side.BUY, 10, 1);
+                ids.add(order.getOrderId());
+            });
+        }
+
+        executor.shutdown();
+        assertTrue(executor.awaitTermination(2, TimeUnit.SECONDS));
+
+        assertEquals(numThreads, ids.size(), "All IDs should be unique");
     }
 }
